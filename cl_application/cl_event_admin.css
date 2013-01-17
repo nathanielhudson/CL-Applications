@@ -1,0 +1,63 @@
+
+/* ---------- Overall Specifications ---------- */
+
+#cl_event_admin_table td {
+	padding: 3px 0 3px 5px;
+}
+
+.cl_event_item {
+	border-radius: 3px;
+	border: 1px solid #999;
+	background-color: #ccc;
+	margin: 1px 5px 1px 0;
+	padding: 2px;
+}
+
+.cl_event_item_red {
+	background-color: #ffdbdb;
+	border: 1px solid #eb5c5c;
+}
+
+.cl_event_item_yellow {
+	background-color: #fff5db;
+	border: 1px solid #ebe65c;
+}
+
+.cl_event_item_green {
+	background-color: #e7ffcc;
+	border: 1px solid #aaea57;
+}
+
+.ui-button {
+	font-size: 12px;
+	margin: 0 0 0 1em;
+}
+
+.print_button {
+	float: right;
+}
+
+.hidden-hr {
+	visibility:hidden;
+}
+
+#cl_event_show_times_control span {font-size: 12px;}
+
+#cl_show_times_warn, .ui-dialog .ui-button-text {
+	font-size: 14px;
+}
+
+@media print {
+  .noprint, .ui-button {
+		display: none !important;
+	}
+	.cl_event_item a {
+		color: black;
+	}
+	.cl_event_item hr {
+		color: black;
+	}
+	.cl_event_item a:after {
+		content: "" !important; /* suppress link thing */
+	}
+}

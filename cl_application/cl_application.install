@@ -1,0 +1,241 @@
+<?php
+
+require_once('content_types/cl_event.field.inc');
+watchdog("CL Application", "Hit CL install mark BEGIN");
+
+function cl_application_get_installed_fields() {
+	$fields = array();
+	foreach (cl_event_features_output() as $key => $item) {
+		$fields[$key] = $item['field_config'];
+	}
+	return $fields;
+}
+
+function cl_application_get_installed_instances() {
+	$instances = array();
+	foreach (cl_event_features_output() as $key => $item) {
+		$instances[$key] = $item['field_instance'];
+	}
+	return $instances;
+}
+
+
+function cl_event_add_fields($type, $name, $field) {
+	// Add or remove the body field, as needed.
+	$field = field_info_field($name);
+	$instance = field_info_instance('node', $name, $type->type);
+	if (empty($field)) {
+		$field = field_create_field($field);
+	}
+	if (empty($instance)) {
+		$instance = field_create_instance($field);
+	}
+	return $instance;
+}
+
+
+/**
+ * Implements hook_schema().
+ */
+function cl_application_schema() {
+	/**
+	 * Scheme for cl_application_form table
+	 */
+ 	watchdog("CL Application", "Hit CL install mark 5");
+	 
+	$team_member_fields = array('email', 'title', 'first', 'last', 'phone', 'street', 'city', 'postal', 'country', 'province', 'program', 'year');
+	$long_form_fields = array('experience', 'skills', 'product', 'customers', 'problem', 'userbenefits', 'orgbenefits', 'differ', 'team');
+	$schema['cl_application_form'] = array(
+		'description' => 'Submitted application form bodies',
+		'fields' => array(
+			'fid'		=> array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'Unique ID'),
+			'uid'		=> array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0,
+				'description' => 'Submitting user ID'),
+			'domain'	=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'updated'	=> array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+			'status'	=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => 'gray'),
+			'company'	=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+		),
+		'primary key' => array('fid'),
+	);
+	for ($i = 1; $i <= 4; $i++) {
+		foreach ($team_member_fields as $field) {
+			$schema['cl_application_form']['fields']['member'.$i.$field] = array('type' => 'varchar', 'length' => 255, 'not null' => FALSE, 'default' => NULL);
+		}
+	}
+	foreach ($long_form_fields as $field) {
+		$schema['cl_application_form']['fields'][$field] = array('type' => 'text', 'not null' => FALSE);
+	}
+	/**
+	 * Scheme for cl_history table
+	 */
+	$schema['cl_history'] = array(
+		'description' => 'Team History, used to track progress.',
+		'fields' 		=> array(
+			'hid'			=> array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'Unique ID'),
+			'uid'			=> array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,
+				'default' => 0, 'description' => 'Submitting user ID'),
+			'domain'	=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'title'		=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'url'			=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'message'	=> array('type' => 'text', 'not null' => FALSE),
+			'date'		=> array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+			'color'		=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			//color: Red, Yellow, Green, Neutral.
+			//'progress'	=> array('type' => 'varchar', 'length' => 255,
+			//'description' => 'Event brings team up to this progress level, if set.'),
+		),
+		'primary key' => array('hid'),
+	);
+	/**
+	 * Scheme for cl_team table
+	 */
+	$schema['cl_team'] = array(
+		'description' => 'List of teams.',
+		'fields' => array(
+			'tid'			=> array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'Unique ID'),
+			'uid'			=> array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,
+				'default' => 0, 'description' => 'Submitting user ID'),
+			'company'		=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'domain'		=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'section'		=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => '',
+				'description'	=> 'The section of the process this user is in.'),
+			'progress'		=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => '',
+				'description' 	=> 'Progress through the current section'),
+			),
+		'primary key' => array('tid'),
+	);
+	for ($i = 1; $i <= 4; $i++) {
+		foreach ($team_member_fields as $field) {
+			$schema['cl_team']['fields']['member'.$i.$field] =
+			array('type' => 'varchar', 'length' => 255, 'not null' => FALSE, 'default' => NULL);
+		}
+	}
+	$schema['cl_sections'] = array(
+		'description' => 'List of things a team must go through before progressing.',
+		'fields' => array(
+			'sid'		=> array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'Unique ID'),
+			'type'	=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'name'	=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'description'	=> array('type' => 'text', 'not null' => FALSE),
+			'weight'		=> array('type' => 'int', 'unsigned' => FALSE, 'not null' => TRUE, 'default' => -99,
+				'description' => 'OKAY. Due to the way that drupal\'s sorting works, you start at a larger number,
+				 and progress towards more negative numbers. In other words, the lower this is, the further along the user is in the process'),
+			'domain'		=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+		),
+		'primary key' => array('sid'),
+	);
+	$schema['cl_signup'] = array(
+		'description' => 'A signup for an event',
+		'fields' => array(
+			'signup_id'				=> array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'Unique ID'),
+			'nid'							=> array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'Event Node ID'),
+			'uid'							=> array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'ID of the user signing up'),
+			'slot'						=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => '', 'description' => 'Slot the user has been placed in'),
+			'panel'						=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'reviewed'				=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'review_color'		=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'notified'				=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'expanded_review'	=> array('type' => 'text', 'not null' => FALSE),
+		),
+		'primary key' => array('signup_id'),
+	);
+	
+	$schema['cl_task'] = array(
+		'description' => 'A task assigned to one or more phase3 teams',
+		'fields' => array(
+			'task_id'			=> array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'Unique ID'),
+			'domain'			=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'uid'					=> array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'ID of the user assigned the task. 0 for a global task'),
+			'title'				=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'description'	=> array('type' => 'text', 'not null' => FALSE),
+			'deadline'		=> array('type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE, 'description' => 'Unix timestamp of due date.'),
+		),
+		'primary key' => array('task_id'),
+	);
+	$schema['cl_task_message'] = array(
+		'description' => 'A task message.',
+		'fields' => array(
+			'tmessage_id'	=> array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'Unique ID'),
+			'task_id'			=> array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => 'Associated task'),
+			'con_uid'			=> array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'ID of the user whose team is being conversed with.'),
+			'uid'					=> array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'ID of the user who posted the message.'),
+			'state'				=> array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+			'description'	=> array('type' => 'text', 'not null' => FALSE),
+		),
+		'primary key' => array('tmessage_id'),
+	);
+	return $schema;
+}
+
+
+function cl_application_install() {
+	watchdog("CL Application", "Hit CL install mark 1");
+
+	$cl_event = array(
+		'type' => 'cl_event',
+		'name' => 'CL Event',
+		'base' => 'node_content',
+		'description' => 'This is the CL type.',
+		'title_label' => 'Title',
+	'custom' => TRUE,
+	);
+
+	watchdog("CL Application", "Hit CL install mark 2");
+
+	$content_type = node_type_set_defaults($cl_event);
+	node_add_body_field($content_type, 'Example Description');
+	node_type_save($content_type);
+	$body_instance = field_info_instance('node', 'body', 'cl_event');
+	$body_instance['display']['cl_event_list'] = array(
+		'label' => 'hidden',
+		'type' => 'text_summary_or_trimmed',
+	);
+	field_update_instance($body_instance);
+	
+	watchdog("CL Application", "Hit CL install mark 3");
+	
+	foreach (cl_application_get_installed_fields() as $field) {
+		field_create_field($field);
+	}
+	foreach (cl_application_get_installed_instances() as $instance) {
+		$instance['entity_type'] = 'node';
+		$instance['bundle'] = $cl_event['type'];
+		field_create_instance($instance);
+	}
+	
+	watchdog("CL Application", "Hit CL install mark 4");
+	
+	variable_set('cl_program_name', 'Program');
+	variable_set('cl_lock_status', 'closed');
+	variable_set('cl_redirect_target', '');
+	variable_set('cl_default_app_reject', "We're sorry, but your application cannot be accepted at present time.\n\n:reason:");
+	variable_set('cl_default_app_accept', "Congratulations! Your application has been accepted. Please follow the link at the end of this email for information on what steps you should take next.");
+	variable_set('cl_final_section_name', 'Phase 3');
+	variable_set('cl_phase_3_description', '');
+	variable_set('cl_application_description', '');
+}
+
+
+function cl_application_uninstall() {
+	$sql = 'SELECT nid FROM {node} n WHERE n.type = :type';
+	$result = db_query($sql, array(':type' => 'cl_event'));
+	$nids = array();
+	foreach ($result as $row) {
+		$nids[] = $row->nid;
+	}
+	node_delete_multiple($nids);
+
+	foreach (array_keys(cl_application_get_installed_fields()) as $field) {
+		field_delete_field($field);
+	}
+
+	$instances = field_info_instances('node', 'cl_event');
+	foreach ($instances as $instancl_name => $instance) {
+		field_delete_instance($instance);
+	}
+
+	node_type_delete('cl_event');
+
+	field_purge_batch(1000);
+}

@@ -1,0 +1,63 @@
+
+/* ---------- Overall Specifications ---------- */
+
+.history-wrapper {
+	margin: 10px 5px;
+	padding: 15px;
+	border-radius: 8px;
+	position: relative;
+}
+
+.history-wrapper.history-red {
+  background-color: #fff0f0;
+  border: 1px solid #e77;
+}
+
+.history-wrapper.history-yellow {
+  background-color: #fffbf0;
+  border: 1px solid #eeea77;
+}
+
+.history-wrapper.history-green {
+  background-color: #F8FFF0;
+  border: 1px solid #be7;
+}
+
+.history-wrapper.history-gray {
+  background-color: #f0f0f0;
+  border: 1px solid #b3b3b3;
+}
+
+.history-wrapper .history-title {
+	float: left;
+	margin: 0;
+}
+
+.history-wrapper .history-date {
+	float: right;
+	font-size: 0.8em;
+}
+
+.history-wrapper .history-message {
+	clear: both;
+}
+
+.history-wrapper .history-message p {
+	margin: 16px 0 0;
+}
+
+.history-wrapper.history-gray.target {
+	box-shadow: 0 0 20px #AAA;
+}
+
+.history-wrapper.history-red.target {
+	box-shadow: 0 0 20px #F88;
+}
+
+.history-wrapper.history-green.target {
+	box-shadow: 0 0 20px #8F8;
+}
+
+.history-wrapper.history-yellow.target {
+	box-shadow: 0 0 20px #FF4;
+}

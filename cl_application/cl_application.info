@@ -1,0 +1,8 @@
+name = Carleton Entrepreneurs and Lead To Win Application
+description = Handles applications for Carleton Entrepreneurs and Lead To Win.
+package = Custom
+core = 7.x
+
+dependencies[] = calendar
+#dependencies[] = domain
+dependencies[] = date

@@ -1,0 +1,367 @@
+<?php
+/**
+ * Implements hook_permission()
+ */
+
+require_once('cl_common.inc');
+
+function cl_application_permission() {
+    return array(
+          'cl_admin' => array(
+              'title' => t('Administrate Carleton Entrepreneurs'),
+              'description' => t('Allows users to access the administrative controls for Carleton Entrepreneurs.'),
+        ),
+    );
+}
+
+function cl_application_not_locked() {
+	return variable_get('cl_lock_status') == 'open';
+	//return FALSE;
+}
+
+function cl_application_is_in_P3() {
+	if (!cl_application_not_locked() || $GLOBALS["user"]->uid == 0) {
+		return FALSE;
+	}
+	//return true;
+	$progress = cl_get_progress($GLOBALS["user"]->uid);
+	return $progress['section'] == 'phase3';
+}
+
+function cl_application_can_apply() {
+	if (!cl_application_not_locked() || $GLOBALS["user"]->uid == 0) {
+		return FALSE;
+	}
+	$progress = cl_get_progress($GLOBALS["user"]->uid);
+	if (($progress == NULL) || $progress == -1) {
+		return TRUE;
+	} elseif ($progress == array('section' => 'application', 'progress' => 'none')) {
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function cl_application_menu() {
+    $items = array();
+    $items['ce'] = array(
+        'page callback' => 'cl_show_history',
+        'page arguments' => array('',1),
+        'access callback' => 'cl_application_not_locked',
+        'file' => 'cl_history.inc',
+        'title' => '!sub1',
+				'title arguments' => array('!sub1' => variable_get('cl_program_name')),
+        'type' => MENU_NORMAL_ITEM,
+        'expanded' => TRUE,
+    );
+    $items['ce/application'] = array(
+        'title' => 'Apply To !sub1',
+				'title arguments' => array('!sub1' => variable_get('cl_program_name')),
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('cl_application_first_form'),
+        'access callback' => 'cl_application_can_apply',
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'cl_application_forms.inc',
+    );
+    $items['ce/opportunities'] = array(
+        'title' => '!sub1',
+				'title arguments' => array('!sub1' => variable_get('cl_final_section_name')),
+        'page callback' => 'cl_show_tasks',
+        'access callback' => 'cl_application_is_in_P3',
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'cl_tasks.inc',
+    );
+    $items['ce/progress'] = array(
+        'page callback' => 'cl_show_history',
+        'page arguments' => array('',2),
+        'access callback' => 'cl_application_not_locked',
+        'file' => 'cl_history.inc',
+        'title' => 'View my Progress',
+        'type' => MENU_CALLBACK, //Hidden for now. Maybe it'll be useful later.
+    );
+    $items['ceadmin'] = array(
+      'title' => '!sub1 Administration',
+			'title arguments' => array('!sub1' => variable_get('cl_program_name')),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('cl_admin_settings_form'),
+      'access arguments' => array('cl_admin'),
+      'type' => MENU_NORMAL_ITEM,
+      'expanded' => TRUE,
+      'file' => 'cl_admin_settings.inc',
+    );
+    $items['ceadmin/review'] = array(
+        'page callback' => 'cl_application_list_applications',
+        'access callback' => 'cl_review_get_permission',
+        'file' => 'cl_application_review.inc',
+        'title' => 'Review Applications',
+        'type' => MENU_NORMAL_ITEM,
+    );
+    $items['ceadmin/sections'] = array(
+        'title' => 'Administrate Process',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('cl_section_order_form'),
+        'access arguments' => array('cl_admin'),
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'cl_section_admin.inc',
+    );
+		$items['ceadmin/progress/%'] = array(
+        'page callback' => 'cl_show_history',
+        'page arguments' => array(3),
+        'access arguments' => array('cl_admin'),
+        'file' => 'cl_history.inc',
+        'title' => 'User Progress View',
+        'type' => MENU_CALLBACK,
+    );
+		$items['ceadmin/export'] = array(
+			'page callback' => 'cl_list_exportables',
+			'access arguments' => array('cl_admin'),
+			'file' => 'cl_export.inc',
+			'title' => 'Export Items',
+			'type' => MENU_NORMAL_ITEM,
+		);
+		$items['ceadmin/export/%'] = array(
+			'page callback' => 'cl_export_items',
+			'page arguments' => array(2),
+			'access arguments' => array('cl_admin'),
+			'file' => 'cl_export.inc',
+			'title' => 'Export',
+			'type' => MENU_CALLBACK,
+		);
+    $items['ceadmin/event'] = array(
+        'page callback' => 'cl_event_admin',
+        'access arguments' => array('cl_admin'),
+        'file' => 'cl_event_admin.inc',
+        'title' => 'Administrate Events',
+        'type' => MENU_NORMAL_ITEM,
+    );
+    $items['ceadmin/event/assign/%'] = array(
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('cl_event_assignment_form', 3),
+        'access arguments' => array('cl_admin'),
+        'file' => 'cl_event_assign.inc',
+        'title' => 'Administrate Event Signups',
+        'type' => MENU_NORMAL_ITEM,
+    );
+    $items['ceadmin/event/review/%'] = array(
+        'page callback' => 'cl_event_review_table',
+        'access callback' => 'cl_review_get_permission',
+        'page arguments' => array(3),
+        'file' => 'cl_event_admin.inc',
+        'title' => 'Review Event Signups',
+        'type' => MENU_NORMAL_ITEM,
+    );
+    $items['ceadmin/event/review/%/%'] = array(
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('cl_event_review_form', 3, 4),
+        'access arguments' => array('cl_admin'),
+        'file' => 'cl_event_review.inc',
+        'title' => 'Review Event Signups',
+        'type' => MENU_NORMAL_ITEM,
+    );
+    $items['ceadmin/phase3'] = array(
+        'title' => 'Administrate !sub1',
+				'title arguments' => array('!sub1' => variable_get('cl_final_section_name')),
+        'access arguments' => array('cl_admin'),
+        'page callback' => 'cl_list_p3_users',
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'cl_tasks_admin.inc',
+    );
+    $items['ceadmin/phase3/%'] = array(
+        'title' => 'Show User Opportunities',
+        'access arguments' => array('cl_admin'),
+        'page callback' => 'cl_show_p3_user',
+        'page arguments' => array(2),
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'cl_tasks_admin.inc',
+    );
+    return $items;
+}
+
+function cl_review_get_permission() {
+    //we let users see their own application
+    if (arg(0)=='ce'&&arg(1)=='review'&&is_numeric(arg(2))&&!arg(3)) {
+      $uid = db_select('cl_application_form')
+        ->fields('cl_application_form', array('uid'))
+        ->condition('fid', arg(2))
+        ->execute()
+        ->fetchfield();
+      if ($uid == $GLOBALS["user"]->uid) {return TRUE;}
+    }
+    return user_access('cl_admin');
+}
+
+
+/**
+ * Implements hook_theme()
+ */
+function cl_application_theme() {
+    $items = array(
+        'cl_application_progress' => array(
+          'render element' => 'element',
+      ),
+        'cl_section_order_form' => array(
+          'render element' => 'form',
+            'file' => 'cl_section_admin.inc',
+      ),
+        'cl_event_assignment_form' => array(
+          'render element' => 'form',
+            'file' => 'cl_event_assign.inc',
+      ),
+        'event_section' => array(),
+        'time_slots' => array(),
+    );
+    return $items;
+}
+
+function theme_cl_application_progress($variables) {
+	drupal_add_css(drupal_get_path('module','cl_application') . '/cl_history.css', array('type'=>'file'));
+    $element = $variables['element'];
+    $output = '<div class="history-wrapper history-'.$element['#color'].'" id="history-'.$element['#hid'].'">';
+    if ($element['#url'] != '') {
+      $output .= '<h3 class="history-title"><a href="'.$element['#url'].'">' . $element['#title'] . '</a></h3>';
+    } else {
+      $output .= '<h3 class="history-title">' . $element['#title'] . '</h3>';
+    }
+    $output .= '<span class="history-date">' . $element['#date'] . '</span>';
+    $output .= '<div class="history-message">' . $element['#message'] . '</div>';
+    $output .= '</div>';
+    return $output;
+}
+
+function cl_application_node_validate($node, $form, &$form_state) {
+    //Make sure that specified times actually are valid times.
+    //The regular expressions here just strip invisible characters from the second half of the string.
+    if ($node->type=='cl_event' && $form_state['input']['op']='Save') {
+      $slots=explode("\n", $form_state['input']['field_time_slots']['und'][0]['value']);
+      foreach ($slots as $line => $slot) {
+        $time_components = cl_time_slots_explode($slot);
+
+        if (!(count($time_components) == 2 || count($time_components) == 3)) {
+            form_set_error('field_time_slots', 'You seem to have made an error in your list of times on line '.($line+1).'.');
+            break;
+        } elseif (!is_numeric($time_components[0]) || !is_numeric($time_components[1])) {
+            form_set_error('field_time_slots', 'The time specified on line '.($line+1).' appears to not be a number!.');
+            break;
+        } elseif ($time_components[0] > 24 ||
+            $time_components[1] > 59 ||
+            $time_components[0] < 0 ||
+            $time_components[1] < 0) {
+            form_set_error('field_time_slots', 'Time time specified on line '.($line+1).' is out of bounds.');
+            break;
+        }
+        if (count($time_components) == 3) {
+            //if the slot is named...
+        }
+      }
+    }
+}
+
+
+function cl_event_get_applicable_sections($element) {
+    $values = array();
+    $values['None'] = 'None';
+    $domain=cl_get_domain();
+    $section_query=db_select('cl_sections')
+      ->fields('cl_sections',array('sid', 'name', 'type'))
+      ->condition('domain', $domain['domain_id'], '=')
+      ->condition(db_or()->condition('type', 'interview')->condition('type', 'assessment'))
+      ->execute();
+    $section = $section_query->fetchAssoc();
+    while ($section) {
+      $values[$section['sid']] = $section['name'].' ('.ucwords($section['type']).')';
+      $section = $section_query->fetchAssoc();
+    }
+
+    return $values;
+}
+
+function cl_application_field_formatter_info() {
+  return array(
+    'event_section' => array(
+    'label' => t('CL Event Section Formatter'),
+    'field types' => array('list_text'),
+    ),
+    'time_slots' => array(
+    'label' => t('CL Time Slots Formatter'),
+    'field types' => array('text_long'),
+    ),
+  );
+}
+
+function cl_application_field_formatter_view($object_type, $object, $field, $instance, $langcode, $items, $display) {
+    $element = array();
+    switch ($display['type']) {
+      case 'event_section':
+        foreach ($items as $delta => $item) {
+            $element[$delta]['#type'] = 'markup';
+            $element[$delta]['#markup'] = theme('event_section', array(
+                'sid' => $object->field_event_section['und'][0]['value'],
+                'section' => cl_get_section_name_description($object->field_event_section['und'][0]['value']),
+                'progress' => cl_get_progress($GLOBALS["user"]->uid),
+                'type' => cl_get_section_type($object->field_event_section['und'][0]['value']),
+                'event_time' => $object->field_event_time['und'][0]['value'],
+                'cutoff' => $object->field_cutoff['und'][0]['value'],
+            ));
+          }
+        break;
+        case 'time_slots':
+        foreach ($items as $delta => $item) {
+            $element[$delta]['#type'] = 'markup';
+            $element[$delta]['#markup'] = theme('time_slots', array(
+                'sid' => $object->field_event_section['und'][0]['value'],
+                'section' => cl_get_section_name_description($object->field_event_section['und'][0]['value']),
+                'times' => explode("\n", $object->field_time_slots['und'][0]['value']),
+                'groups' => $object->field_section_names['und'],
+                'progress' => cl_get_progress($GLOBALS["user"]->uid),
+                'type' => cl_get_section_type($object->field_event_section['und'][0]['value']),
+                'nid' => $object->nid,
+                'title' => $object->title,
+                'event_time' => $object->field_event_time['und'][0]['value'],
+                'cutoff' => $object->field_cutoff['und'][0]['value'],
+            ));
+          }
+      break;
+    }
+    return $element;
+}
+
+function theme_event_section($variables) {
+    //Comparisons here done using Unix timestamps, which express time in seconds. 86400 seconds = 1 day.
+    $cutoff_time = strtotime($variables['event_time']) - 86400 * $variables['cutoff'];
+    if (REQUEST_TIME > $cutoff_time) {
+      return '<hr />';
+    }
+    $output = array('<hr />This event in open to all teams in ' . $variables['section']['name'] . '.');
+    if ($variables['progress'] && $variables['progress']['section']==$variables['sid']) {
+      $output[] = '<br /> You are able to sign up for this event.';
+      if ($variables['type'] == 'interview') {
+        $output[] = 'If you wish to attend this event, please choose a time below.';
+      } elseif ($variables['type'] == 'assessment') {
+        $output[] = 'If you wish to attend this event, please sign up below and an administrator will place you into an appropriate time slot and panel.';
+      }
+    }
+    $output = '<p>' . implode($output, ' ') . '</p>';
+    return $output;
+}
+
+require_once('cl_event_forms.inc');
+
+function theme_time_slots($variables) {
+    //Comparisons here done using Unix timestamps, which express time in seconds. 86400 seconds = 1 day.
+    $cutoff_time = strtotime($variables['event_time']) - 86400 * $variables['cutoff'];
+    if (REQUEST_TIME > $cutoff_time) {
+      return '<p><em>Signup for this event was closed ' . date('F j, Y, \a\t g:i a',$cutoff_time) .'.</em></p>';
+    } elseif ($variables['progress'] && $variables['progress']['section']==$variables['sid']) {
+      $form = '';
+      if ($variables['type'] == 'interview') {
+        $form = drupal_render(drupal_get_form('cl_interview_signup_form', $variables));
+      } elseif ($variables['type'] == 'assessment') {
+        $form = drupal_render(drupal_get_form('cl_assessment_signup_form', $variables));
+      }
+      return '<p><em>Signup for this event will be closed on '.date('F j, Y, \a\t g:i a',$cutoff_time).'.</em></p>' . $form;
+    }
+}
+
+?>
