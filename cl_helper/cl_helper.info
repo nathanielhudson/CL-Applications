@@ -1,0 +1,4 @@
+name = CL Helper
+description = "Some miscellaneous helper functions that are separate from CL Application."
+core = 7.x
+package = Custom
