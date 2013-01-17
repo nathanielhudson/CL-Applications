@@ -1,7 +1,6 @@
 <?php
 
 require_once('content_types/cl_event.field.inc');
-watchdog("CL Application", "Hit CL install mark BEGIN");
 
 function cl_application_get_installed_fields() {
 	$fields = array();
@@ -41,7 +40,6 @@ function cl_application_schema() {
 	/**
 	 * Scheme for cl_application_form table
 	 */
- 	watchdog("CL Application", "Hit CL install mark 5");
 	 
 	$team_member_fields = array('email', 'title', 'first', 'last', 'phone', 'street', 'city', 'postal', 'country', 'province', 'program', 'year');
 	$long_form_fields = array('experience', 'skills', 'product', 'customers', 'problem', 'userbenefits', 'orgbenefits', 'differ', 'team');
@@ -170,7 +168,6 @@ function cl_application_schema() {
 
 
 function cl_application_install() {
-	watchdog("CL Application", "Hit CL install mark 1");
 
 	$cl_event = array(
 		'type' => 'cl_event',
@@ -181,8 +178,6 @@ function cl_application_install() {
 	'custom' => TRUE,
 	);
 
-	watchdog("CL Application", "Hit CL install mark 2");
-
 	$content_type = node_type_set_defaults($cl_event);
 	node_add_body_field($content_type, 'Example Description');
 	node_type_save($content_type);
@@ -192,9 +187,7 @@ function cl_application_install() {
 		'type' => 'text_summary_or_trimmed',
 	);
 	field_update_instance($body_instance);
-	
-	watchdog("CL Application", "Hit CL install mark 3");
-	
+		
 	foreach (cl_application_get_installed_fields() as $field) {
 		field_create_field($field);
 	}
@@ -203,8 +196,6 @@ function cl_application_install() {
 		$instance['bundle'] = $cl_event['type'];
 		field_create_instance($instance);
 	}
-	
-	watchdog("CL Application", "Hit CL install mark 4");
 	
 	variable_set('cl_program_name', 'Program');
 	variable_set('cl_lock_status', 'closed');
