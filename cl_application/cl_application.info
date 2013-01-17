@@ -1,4 +1,4 @@
-name = Carleton Entrepreneurs and Lead To Win Application
+name = CL Application
 description = Handles applications for Carleton Entrepreneurs and Lead To Win.
 package = Custom
 core = 7.x
