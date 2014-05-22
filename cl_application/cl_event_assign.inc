@@ -135,6 +135,10 @@ function theme_cl_event_assignment_form(&$variables) {
 
 function cl_event_assignment_form_validate($form, &$form_state) {
     $occupied_slots = array();
+		if (!isset($form_state['input']['time_table'])) {
+			return;
+		}
+		
     foreach ($form_state['input']['time_table'] as $id => $item) {
         if ($item['slot'] != '' && $item['panel'] != '') {
             if (isset($occupied_slots[$item['slot'] . ' %%% ' . $item['panel']])) {
